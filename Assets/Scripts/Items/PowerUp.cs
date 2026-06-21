@@ -10,15 +10,27 @@ namespace Tank90
     {
         public PowerUpType type;
 
+        [Tooltip("Seconds before this power-up disappears on its own (0 or less = never).")]
+        public float lifetime = 15f;
+
         SpriteRenderer sr;
         float blink;
+        float age;
 
         void Awake() { sr = GetComponent<SpriteRenderer>(); }
 
         void Update()
         {
+            // Auto-expire after 'lifetime' seconds; blink faster over the last 3s as a warning.
+            if (lifetime > 0f)
+            {
+                age += Time.deltaTime;
+                if (age >= lifetime) { Destroy(gameObject); return; }
+            }
+
+            float blinkRate = (lifetime > 0f && lifetime - age <= 3f) ? 0.1f : 0.25f;
             blink += Time.deltaTime;
-            if (blink >= 0.25f) { blink = 0f; sr.enabled = !sr.enabled; }
+            if (blink >= blinkRate) { blink = 0f; sr.enabled = !sr.enabled; }
         }
 
         void OnTriggerEnter2D(Collider2D other)
@@ -70,6 +82,8 @@ namespace Tank90
             rb.gravityScale = 0;
             var pu = go.AddComponent<PowerUp>();
             pu.type = type;
+            var gm = GameManager.Instance;
+            if (gm != null) pu.lifetime = gm.powerUpLifetime;
             return pu;
         }
     }

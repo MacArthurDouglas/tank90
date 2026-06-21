@@ -20,7 +20,7 @@ namespace Tank90
         {
             base.Awake();
             team = Team.Enemy;
-            sr = GetComponent<SpriteRenderer>();
+            sr = GetComponentInChildren<SpriteRenderer>(); // the Visual child renderer
         }
 
         /// <summary>Configure this enemy from its type. Call right after creation.</summary>

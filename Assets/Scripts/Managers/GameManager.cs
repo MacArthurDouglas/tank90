@@ -16,6 +16,8 @@ namespace Tank90
         public int enemiesPerStage = 20;
         public float respawnDelay = 1.2f;
         public float playerShieldTime = 3f;
+        [Tooltip("Seconds a dropped power-up stays on the field before disappearing (0 = never).")]
+        public float powerUpLifetime = 15f;
 
         public int Score { get; private set; }
         public int Lives { get; private set; }

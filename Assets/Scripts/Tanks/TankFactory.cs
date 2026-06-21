@@ -13,14 +13,19 @@ namespace Tank90
             go.transform.position = pos;
             go.layer = LayerMask.NameToLayer("Tank");
 
-            var sr = go.AddComponent<SpriteRenderer>();
-            sr.sortingOrder = GameConfig.OrderTank;
-
             var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = false;
             col.size = new Vector2(ColliderSize, ColliderSize);
 
             go.AddComponent<Rigidbody2D>(); // TankMotor configures it as kinematic
+
+            // The sprite lives on a child so it can rotate to face a direction WITHOUT rotating the
+            // (square) collider/rigidbody. One up-facing sprite + a Z rotation gives all 4 directions,
+            // so every direction shares the same centre — no per-direction art offset, no wall wedging.
+            var vis = new GameObject("Visual");
+            vis.transform.SetParent(go.transform, false);
+            var sr = vis.AddComponent<SpriteRenderer>();
+            sr.sortingOrder = GameConfig.OrderTank;
             return go;
         }
 

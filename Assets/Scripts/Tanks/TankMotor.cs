@@ -8,7 +8,6 @@ namespace Tank90
     /// wedges into a wall so the player can never get permanently stuck.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
-    [RequireComponent(typeof(SpriteRenderer))]
     [RequireComponent(typeof(BoxCollider2D))]
     public class TankMotor : MonoBehaviour
     {
@@ -23,6 +22,7 @@ namespace Tank90
 
         Rigidbody2D rb;
         SpriteRenderer sr;
+        Transform vis;          // child holding the sprite; rotated to face a direction
         BoxCollider2D box;
         ContactFilter2D filter;
         readonly RaycastHit2D[] hits = new RaycastHit2D[8];
@@ -36,7 +36,9 @@ namespace Tank90
         void Awake()
         {
             rb = GetComponent<Rigidbody2D>();
-            sr = GetComponent<SpriteRenderer>();
+            vis = transform.Find("Visual");
+            sr = vis != null ? vis.GetComponent<SpriteRenderer>() : GetComponentInChildren<SpriteRenderer>();
+            if (vis == null && sr != null) vis = sr.transform;
             box = GetComponent<BoxCollider2D>();
             colSize = box.size;
             wallMask = LayerMask.GetMask("Wall");
@@ -66,27 +68,39 @@ namespace Tank90
             if (!desired.HasValue) { IsMoving = false; return; }
 
             Direction d = desired.Value;
-            if (d != Facing)
-            {
-                Facing = d;
-                AlignPerpendicular(d);
-                UpdateSprite();
-            }
+            float step = speed * Time.fixedDeltaTime;
 
-            float dist = speed * Time.fixedDeltaTime;
-            Vector2 dir = d.ToVector();
+            // Free movement: face the pressed direction instantly and move exactly that way. No grid
+            // snapping, no alignment correction — the tank goes precisely where you point and walls
+            // simply block it. (Entering a 1-cell corridor needs the player to line up themselves.)
+            if (d != Facing) { Facing = d; UpdateSprite(); }
+
+            IsMoving = TryMove(d.ToVector(), step) > 0.0001f;
+        }
+
+        // How far the tank can travel along dir before hitting a wall/tank, WITHOUT moving it.
+        float CastAllowed(Vector2 dir, float dist)
+        {
+            if (dist <= 0f) return 0f;
             int n = rb.Cast(dir, filter, hits, dist);
             float allowed = dist;
             for (int i = 0; i < n; i++)
-                if (hits[i].distance < allowed) allowed = hits[i].distance;
-            if (allowed < 0f) allowed = 0f;
-
-            if (allowed > 0.0001f)
             {
-                rb.MovePosition(rb.position + dir * allowed);
-                IsMoving = true;
+                // A tank flush against a wall makes rb.Cast report that wall at distance 0 in EVERY
+                // direction — which would freeze it even when driving AWAY. Only treat a hit as
+                // blocking if its surface actually faces against our motion (normal opposes dir).
+                if (Vector2.Dot(hits[i].normal, dir) > -0.5f) continue;
+                if (hits[i].distance < allowed) allowed = hits[i].distance;
             }
-            else IsMoving = false;
+            return allowed < 0f ? 0f : allowed;
+        }
+
+        // Move up to dist along dir, stopping short of walls/tanks. Returns the distance actually moved.
+        float TryMove(Vector2 dir, float dist)
+        {
+            float allowed = CastAllowed(dir, dist);
+            if (allowed > 0.0001f) rb.MovePosition(rb.position + dir * allowed);
+            return allowed;
         }
 
         void Update()
@@ -104,19 +118,6 @@ namespace Tank90
         bool OverlapsWall(Vector2 center, float shrink)
         {
             return Physics2D.OverlapBox(center, colSize * shrink, 0f, wallMask) != null;
-        }
-
-        // Snap the off-axis coordinate to the 1-unit cell grid so the tank lines up with corridors.
-        // Walls sit on full cells, so cell-aligned movement is what lets tanks fit through gaps.
-        void AlignPerpendicular(Direction d)
-        {
-            Vector2 p = rb.position;
-            if (d == Direction.Up || d == Direction.Down) p.x = SnapCell(p.x);
-            else p.y = SnapCell(p.y);
-
-            // Only snap if the destination is genuinely clear (real collider footprint), so the
-            // align step can never push the body into a wall.
-            if (!OverlapsWall(p, 0.95f)) rb.position = p;
         }
 
         // Safety net: if the tank is somehow overlapping a wall (float drift, a tile spawned/cleared
@@ -140,13 +141,18 @@ namespace Tank90
                 }
         }
 
-        static float SnapCell(float v) => Mathf.Round(v / GameConfig.CellSize) * GameConfig.CellSize;
-
+        // One up-facing sprite (2-frame tread anim) rotated to the facing direction. Because every
+        // direction is the same image rotated about its centre, all four are perfectly centred on the
+        // collider — no per-direction art offset that could make the tank look/feel wedged in a wall.
         void UpdateSprite()
         {
-            sr.sprite = SpriteLibrary.Tank(blockBaseCol, blockBaseRow + designRow, Facing, frame);
+            sr.sprite = SpriteLibrary.Tank(blockBaseCol, blockBaseRow + designRow, Direction.Up, frame);
+            if (vis != null) vis.localRotation = Quaternion.Euler(0f, 0f, Facing.ToZAngle());
         }
 
         public void RefreshSprite() => UpdateSprite();
+
+        /// <summary>The tank's sprite renderer (on the rotating Visual child) for tinting.</summary>
+        public SpriteRenderer Renderer => sr;
     }
 }

@@ -48,7 +48,7 @@ namespace Tank90
         void BuildEnemyIcons()
         {
             enemyRoot = MakeRoot("EnemyIcons", new Vector2(1, 1));
-            var sprite = SpriteLibrary.Tank(8, 0, Direction.Down, 0); // enemy tank, facing down
+            var sprite = SpriteLibrary.Tank(8, 0, Direction.Up, 0); // enemy tank icon (only the up frame is kept)
             enemyIcons = new Image[MaxEnemyIcons];
             for (int i = 0; i < MaxEnemyIcons; i++)
             {
