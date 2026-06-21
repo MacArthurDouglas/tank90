@@ -79,7 +79,6 @@ namespace Tank90
                 bool bonus = bonusFlags[spawnedCount];
                 Vector2 pos = spawnPoints[spawnPtr % spawnPoints.Length];
                 spawnPtr++;
-                spawnedCount++;
 
                 bool spawned = false;
                 Effects.SpawnStar(pos, () => spawned = true);
@@ -87,6 +86,11 @@ namespace Tank90
 
                 var enemy = TankFactory.CreateEnemy(pos, type, bonus);
                 live.Add(enemy);
+                // Count it as spawned only now that it's live, in the same frame as live.Add. If we
+                // incremented earlier (before the spawn-star animation), RemainingToSpawn would drop
+                // first and LiveCount rise several frames later, making the HUD enemy count dip then
+                // jump back up — looking like the enemy count "increases".
+                spawnedCount++;
                 enemy.Destroyed += OnEnemyDestroyed;
 
                 yield return new WaitForSeconds(spawnInterval);

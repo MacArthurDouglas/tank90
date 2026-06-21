@@ -83,7 +83,9 @@ namespace Tank90
 
             if (state == State.Playing)
             {
-                hud.SetStats(Score, Lives, StageNumber, spawner.RemainingToSpawn + spawner.LiveCount);
+                // Enemy counter = tanks still waiting to appear (not those already on the field).
+                // Decrements by one each time an enemy is spawned.
+                hud.SetStats(Score, Lives, StageNumber, spawner.RemainingToSpawn);
 
                 if (playerAlive && Player == null)
                 {
