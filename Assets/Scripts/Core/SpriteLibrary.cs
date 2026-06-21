@@ -4,8 +4,13 @@ using UnityEngine;
 namespace Tank90
 {
     /// <summary>
-    /// Loads all sub-sprites of Resources/GeneralSprites and indexes them by name.
+    /// Loads sprites from Resources/Sprites (one PNG per sprite) and indexes them by name.
     /// Cell naming: gs_c{col}_r{rowFromTop}. See docs/SPRITE_MAP.md.
+    ///
+    /// Each sprite is its own texture (not packed in one atlas) so a sprite's edge never samples a
+    /// neighbouring sprite's pixels — this eliminates the atlas "bleed" where a white line from the
+    /// item row leaked into the bottom of the spawn-star, etc. The old single-sheet GeneralSprites.png
+    /// is kept only as a fallback for any name not present as an individual file.
     /// </summary>
     public static class SpriteLibrary
     {
@@ -15,10 +20,13 @@ namespace Tank90
         {
             if (_map != null) return;
             _map = new Dictionary<string, Sprite>(512);
+            // Fallback first (single sheet), then overlay individual files so they take precedence.
             foreach (var s in Resources.LoadAll<Sprite>("GeneralSprites"))
                 _map[s.name] = s;
+            foreach (var s in Resources.LoadAll<Sprite>("Sprites"))
+                _map[s.name] = s;
             if (_map.Count == 0)
-                Debug.LogError("SpriteLibrary: no sprites loaded from Resources/GeneralSprites");
+                Debug.LogError("SpriteLibrary: no sprites loaded from Resources/Sprites");
         }
 
         public static Sprite Get(string name)
